@@ -2,7 +2,7 @@
 
 solarc = 1340
 alb = 0.32
-N = 20
+N = 10
 ps = 101325
 coefvis = 0.9
 cpp = 1.0005
