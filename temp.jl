@@ -18,7 +18,6 @@ function lw_down(flux_down_lw, temp)
             flux_down_lw[i] += (tau_lw(k,i) - tau_lw(k+1, i))*planck(temp[k])
         end
     end
-    println(flux_down_lw)
     return flux_down_lw
 end
 
@@ -29,7 +28,6 @@ function lw_up(flux_down , t_s, temp, flux_up_lw=zeros(params.n +1))
             flux_up_lw[i] += (tau_lw(i, k+1) - tau_lw(i,k))*planck(temp[k]) + tau_lw(1,i)*flux_up_lw[1]
         end
     end
-    println(flux_up_lw)
     return flux_up_lw
 end
 
@@ -77,7 +75,7 @@ end
 # Execution
 
 function main()
-    params = (n = 5, solarc = 1340, alb = 0.32, ps=101325, coefvis=0.9, coefir = 0.01, eps = 0.9, cpp = 1.0005, g = 9.81, stephan = 5.67e-8)
+    params = (n = 20, solarc = 1340, alb = 0.32, ps=101325, coefvis=0.9, coefir = 0.01, eps = 0.9, cpp = 1.0005, g = 9.81, stephan = 5.67e-8)
     c_sw = -.5*log(params.coefvis)/params.ps
     c_lw = -log(params.coefir)/sqrt((params.ps)^2/(2*params.g))
     params = (; params..., c_lw, c_sw)
@@ -88,9 +86,6 @@ function main()
     for i in 1:params.n +1
         p_int[i]=params.ps*(1-(i/(params.n+1)))
     end
-
-    println(p_int)
-
     # Shortwave
     flux_down_sw = zeros(params.n +1)
     flux_up_sw = zeros(params.n +1)
@@ -103,4 +98,8 @@ function main()
         tau_0_sw[i] = exp(-(c_sw*params.ps+c_sw*p_int[i]))
         flux_up_sw[i] = params.alb*tau_0_sw[i]*flux_down_sw[1]
     end
+
+    temp_ev(100000)
 end
+
+main()
