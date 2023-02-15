@@ -2,30 +2,31 @@ using(Plots)
 
 # Black body radiation
 
-function planck(T)
+function planck(T, params)
     params.stephan*(T)^4
 end
 
 # Longwave
 
-function tau_lw(i_1, i_2)
-    exp(-sqrt(abs((params.c_lw)^2*((p_int[i_2])^2-(p_int[i_1])^2))))
+function tau_lw(i_1, i_2, params)
+    exp(-sqrt(abs((params.c_lw)^2*((params.p_int[i_2])^2-(params.p_int[i_1])^2))))
 end
 
-function lw_down(flux_down_lw, temp)
+function lw_down(flux_down_lw, temp, params)
     for i in 1:params.n +1
         for k in params.n:-1:i
-            flux_down_lw[i] += (tau_lw(k,i) - tau_lw(k+1, i))*planck(temp[k])
+            flux_down_lw[i] += (tau_lw(k,i, params) - tau_lw(k+1, i, params))*planck(temp[k], params)
         end
     end
     return flux_down_lw
 end
 
-function lw_up(flux_down , t_s, temp, flux_up_lw=zeros(params.n +1))
+function lw_up(flux_down , t_s, temp, params)
+    flux_up_lw = zeros(params.n +1)
     flux_up_lw[1] = params.eps*params.stephan*t_s^4 + (1-params.eps)*flux_down[1]
     for i in 2:params.n +1
         for k in 1:i-1
-            flux_up_lw[i] += (tau_lw(i, k+1) - tau_lw(i,k))*planck(temp[k]) + tau_lw(1,i)*flux_up_lw[1]
+            flux_up_lw[i] += (tau_lw(i, k+1, params) - tau_lw(i,k, params))*planck(temp[k], params) + tau_lw(1,i, params)*flux_up_lw[1]
         end
     end
     return flux_up_lw
@@ -33,7 +34,8 @@ end
 
 # Changes in temperature 
 
-function temp_ev(t_f, temp = 293*ones(params.n))
+function temp_ev(t_f, params, flux_tot_sw)
+    temp = 293*ones(params.n)
     dt = 40
     c = 10                               # number of curves to plot
     Y = zeros(c, params.n +1)            # initialisation of the vector for the plot   
@@ -42,9 +44,9 @@ function temp_ev(t_f, temp = 293*ones(params.n))
 
     for t in 1:dt:t_f
 
-        flux_down_lw = lw_down(zeros(params.n +1), temp)
+        flux_down_lw = lw_down(zeros(params.n +1), temp, params)
         t_s = sqrt(sqrt(flux_down_lw[1]/params.stephan))
-        flux_up_lw = lw_up(flux_down_lw, t_s, temp)
+        flux_up_lw = lw_up(flux_down_lw, t_s, temp, params)
 
         flux_tot_lw = flux_up_lw - flux_down_lw
 
@@ -52,8 +54,8 @@ function temp_ev(t_f, temp = 293*ones(params.n))
         dT_lw = zeros(params.n)
 
         for i in 1:params.n
-            dT_sw[i] = params.g*(flux_tot_sw[i+1] - flux_tot_sw[i])/(params.cpp*(p_int[i+1]-p_int[i]))
-            dT_lw[i] = params.g*(flux_tot_lw[i+1]-flux_tot_lw[i])/(params.cpp*(p_int[i+1]-p_int[i]))
+            dT_sw[i] = params.g*(flux_tot_sw[i+1] - flux_tot_sw[i])/(params.cpp*(params.p_int[i+1]-params.p_int[i]))
+            dT_lw[i] = params.g*(flux_tot_lw[i+1]-flux_tot_lw[i])/(params.cpp*(params.p_int[i+1]-params.p_int[i]))
         end
 
         dT = dT_sw + dT_lw
@@ -66,9 +68,7 @@ function temp_ev(t_f, temp = 293*ones(params.n))
             Y[i,:] = vcat([t_s], temp)
             i += 1
         end
-
     end
-    println(temp)
     plot([Y[k,:] for k in 1:c], range(1,params.n +1))
 end
 
@@ -86,11 +86,15 @@ function main()
     for i in 1:params.n +1
         p_int[i]=params.ps*(1-(i/(params.n+1)))
     end
+
+    params = (; params..., p_int)
     # Shortwave
     flux_down_sw = zeros(params.n +1)
     flux_up_sw = zeros(params.n +1)
     tau_0_sw = zeros(params.n +1)
     tau_inf_sw = zeros(params.n +1)
+
+    
 
     for i in 1:params.n +1
         tau_inf_sw[i] = exp(-c_sw*p_int[i])
@@ -99,7 +103,9 @@ function main()
         flux_up_sw[i] = params.alb*tau_0_sw[i]*flux_down_sw[1]
     end
 
-    temp_ev(100000)
+    flux_tot_sw = flux_up_sw - flux_down_sw
+
+    temp_ev(100000, params, flux_tot_sw)
 end
 
 main()
