@@ -1,70 +1,35 @@
-# Constants
-
-solarc = 1340
-alb = 0.32
-N = 5
-ps = 101325
-coefir = 0.9
-eps = 0.99
-cpp = 1.0005
-g = 9.81
-c_lw = -log(coefir)/sqrt(ps*ps/(2*g))
-stephan = 5.67e-8
-
-# Initialisation of arrays
-
-flux_down_lw = zeros(N+1)
-flux_up_lw = zeros(N+1)
-p_int = zeros(N+1)
-dT_lw = zeros(N)
-temp = 293*ones(N)
-zplanck = zeros(N)
-
-# Pressure
-
-for i in 1:N+1
-    p_int[i]=ps*(1-(i/N))
-end
-
 # Black body radiation
 
-for i in 1:N
-    zplanck[i] = stephan*(temp[i])^4
+function planck(T, params)
+    params.stephan*(T^4)
 end
 
-# Computation of fluxes 
+# Longwave
 
-function tau(i_1, i_2)
-    exp(-sqrt(abs(c_lw*c_lw*(p_int[i_2]*p_int[i_2]-p_int[i_1]p_int[i_1]))))
+function tau_lw(i_1, i_2, params)
+    zdup = ((params.p_int[i_2])^2-(params.p_int[i_1])^2)/(2*params.g)
+    return exp(-params.c_lw*sqrt(zdup))
 end
 
-for i in 1:N+1
-    for k in i+1:N
-        flux_down_lw[i] += (tau(i,k) - tau(i, k+1))*zplanck(k) 
-    end 
-end 
-
-for i in 1:N+1
-    for k in 1:i-1
-        flux_up_lw[i] += (tau(k+1,i) - tau(k,i))*zplanck(k) + tau(1,i)(eps*zplanck[1] + (1-eps)*flux_down_lw[1])
-    end
-
-flux_tot_lw = flux_up_lw - flux_down_lw
-
-# Change in temperature 
-
-for i in 1:N
-    dT_lw[i] = (g/cpp)*(flux_tot_lw[i] - flux_tot_lw[i+1])/(p_int[i]-p_int[i+1])
-end
-
-function temp_ev_lw(t_f, t=0, temp = 293*ones(N))
-    dt = 1
-    while t < t_f
-        for i in 1:N
-            temp[i] += dt*dT_lw[i]
-            t += dt
+function lw_down(temp, params)
+    flux_down_lw = zeros(params.n +1)
+    for i in 1:params.n +1  
+        for k in params.n:-1:i   # k>=i 
+            flux_down_lw[i] += (tau_lw(k,i, params) - tau_lw(k+1, i, params))*planck(temp[k], params)
         end
-        t += dt
     end
-    println(temp)
+    return flux_down_lw
+end
+
+function lw_up(flux_down , t_s, temp, params)
+    flux_up_lw = zeros(params.n +1)
+    flux_up_lw[1] = params.emissiv*planck(t_s, params) + (1-params.emissiv)*flux_down[1]
+    for i in 2:params.n +1
+        flux_up_lw[i] = tau_lw(i, 1, params)*flux_up_lw[1]
+
+        for k in 1:i-1 # i>=k+1
+            flux_up_lw[i] += (tau_lw(i, k+1, params) - tau_lw(i,k, params))*planck(temp[k], params)
+        end
+    end
+    return flux_up_lw
 end
