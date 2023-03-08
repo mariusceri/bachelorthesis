@@ -1,41 +1,19 @@
-include("temp.jl")
 
-params = (n = 20, solarc = 1340, alb = 0.32, ps=101325, coefvis=0.9, coefir = 0.01, eps = 0.9, cpp = 1.0005, g = 9.81, stephan = 5.67e-8)
-c_sw = -.5*log(params.coefvis)/params.ps
-c_lw = -log(params.coefir)/sqrt((params.ps)^2/(2*params.g))
-params = (; params..., c_lw, c_sw)
+t_120 = [311.353640601143, 308.7177957173938, 308.3659856679658, 308.35823718126784, 308.3580645680344, 308.35806072141276, 308.3580606356925, 308.358060633784, 308.3580606337485, 308.3580606337485]
 
-# Pressure
-p_int = zeros(params.n+1)
+t_100 = [311.3356673181769, 308.51862927768764, 308.1684365651426, 308.1607760121209, 308.1606065225549, 308.1606027713366, 308.1606026883132, 308.1606026864779, 308.1606026864443, 308.1606026864443]
 
-for i in 1:params.n +1
-    p_int[i]=params.ps*(1-(i/(params.n+1)))
-end
+t_80 = [311.3086536270155, 308.2152452739635, 307.86747778200606, 307.8599486572402, 307.8597838025553, 307.85978019176616, 307.85978011267997, 307.85978011095, 307.8597801109193, 307.8597801109193]
 
-params = (; params..., p_int)
+t_60 = [311.2634889298379, 307.700719517588, 307.3569852489279, 307.3496729280671, 307.3495156236648, 307.34951223860463, 307.3495121657618, 307.34951216419626, 307.34951216417005, 307.34951216417005]
 
-# Shortwave
-flux_down_sw = zeros(params.n +1)
-flux_up_sw = zeros(params.n +1)
-tau_0_sw = zeros(params.n +1)
-tau_inf_sw = zeros(params.n +1)
+t_40 = [311.1726375042601, 306.6532085780253, 306.31748119028634, 306.310590217499, 306.3104472188493, 306.310444250499, 306.3104441888834, 306.3104441876059, 306.3104441875876, 306.3104441875876]
 
-for i in 1:params.n +1
-    tau_inf_sw[i] = exp(-c_sw*params.p_int[i])
-    flux_down_sw[i] = tau_inf_sw[i]*params.solarc
-    tau_0_sw[i] = exp(-(c_sw*params.ps+c_sw*params.p_int[i]))
-    flux_up_sw[i] = params.alb*tau_0_sw[i]*flux_down_sw[1]
-end
+t_20 = [310.89610219113814, 303.5054969982333, 303.1930860182799, 303.18733408407877, 303.18722708423803, 303.1872250932815, 303.18722505623697, 303.18722505554916, 303.1872250555448, 303.1872250555448]
 
+l = [t_20, t_40, t_60, t_80, t_100, t_120]
 
-println("Flux down shortwave:")
-println(flux_down_sw)
-println("Flux up shortwave:")
-println(flux_up_sw)
+plot([elem for elem in 1:40000/10:40000], l, label = ["n=20" "n=40" "n=60" "n=80" "n=100" "n=120"])
 
-println("Flux down longwave:")
-test_flux_down = lw_down(zeros(params.n +1), 300*ones(params.n),params)
-println(test_flux_down)
-println("Flux up longwave:")
-test_flux_up = lw_up(test_flux_down , 300, 300*ones(params.n), params)
-println(test_flux_up)
+xlabel!("time")
+ylabel!("ground temperature(K)")
